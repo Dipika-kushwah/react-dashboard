@@ -1,13 +1,19 @@
-import React from 'react';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const [books, setBooks] = useState([]);
+  const [filteredBooks, setFilteredBooks] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Filter states
+  const [searchName, setSearchName] = useState("");
+  const [searchAuthor, setSearchAuthor] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -24,6 +30,7 @@ const Dashboard = () => {
           },
         });
         setBooks(res.data.data);
+        setFilteredBooks(res.data.data); // set initial filtered data
       } catch (err) {
         console.error("API error:", err);
         setError("Unauthorized or failed to load books.");
@@ -35,6 +42,23 @@ const Dashboard = () => {
 
     fetchBooks();
   }, [navigate]);
+
+  useEffect(() => {
+    const filtered = books.filter((book) => {
+      const matchesName = book.bookName
+        .toLowerCase()
+        .includes(searchName.toLowerCase());
+      const matchesAuthor = book.bookAuthor
+        .toLowerCase()
+        .includes(searchAuthor.toLowerCase());
+      const matchesMin = minPrice === "" || book.bookPrice >= Number(minPrice);
+      const matchesMax = maxPrice === "" || book.bookPrice <= Number(maxPrice);
+
+      return matchesName && matchesAuthor && matchesMin && matchesMax;
+    });
+
+    setFilteredBooks(filtered);
+  }, [searchName, searchAuthor, minPrice, maxPrice, books]);
 
   const handleDelete = async (id) => {
     const token = localStorage.getItem("token");
@@ -74,9 +98,41 @@ const Dashboard = () => {
         </button>
       </div>
 
+      {/* Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <input
+          type="text"
+          placeholder="Search by Book Name"
+          className="px-3 py-2 border rounded-md"
+          value={searchName}
+          onChange={(e) => setSearchName(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Search by Author"
+          className="px-3 py-2 border rounded-md"
+          value={searchAuthor}
+          onChange={(e) => setSearchAuthor(e.target.value)}
+        />
+        <input
+          type="number"
+          placeholder="Min Price"
+          className="px-3 py-2 border rounded-md"
+          value={minPrice}
+          onChange={(e) => setMinPrice(e.target.value)}
+        />
+        <input
+          type="number"
+          placeholder="Max Price"
+          className="px-3 py-2 border rounded-md"
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(e.target.value)}
+        />
+      </div>
+
       {error && <p className="text-red-600 font-semibold mb-4">{error}</p>}
 
-      {books.length > 0 ? (
+      {filteredBooks.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="min-w-full border border-gray-300 divide-y divide-gray-200">
             <thead className="bg-gray-100">
@@ -90,7 +146,7 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {books.map((book) => (
+              {filteredBooks.map((book) => (
                 <tr key={book._id}>
                   <td className="px-4 py-3 border">
                     <img
